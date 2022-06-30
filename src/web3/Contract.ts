@@ -1,13 +1,14 @@
 export interface IContract {
-  address: string;
+  id?: string;
+  address?: string;
   genesis?: number;
 }
 
 export class ContractBuilder<Contract extends IContract> {
   contract: Contract;
 
-  constructor(config: Contract) {
-    this.contract = { genesis: -1, ...config };
+  constructor(id: string, config: Contract) {
+    this.contract = { id, genesis: -1, ...config };
   }
 
   public setAddress(address: string) {
@@ -27,6 +28,6 @@ export class ContractBuilder<Contract extends IContract> {
 
 export class GenericContractBuilder extends ContractBuilder<IContract> {}
 
-export function create(): GenericContractBuilder {
-  return new GenericContractBuilder({ address: "" });
+export function create(id): GenericContractBuilder {
+  return new GenericContractBuilder(id, { address: "" });
 }
