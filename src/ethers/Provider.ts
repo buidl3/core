@@ -6,6 +6,6 @@ export class Buidl3Provider extends ethers.providers.WebSocketProvider {
   }
 }
 
-export function create(url, network): Buidl3Provider {
+export function create(url, network?): Buidl3Provider {
   return new Buidl3Provider(url, network);
 }
