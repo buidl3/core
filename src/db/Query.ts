@@ -11,11 +11,11 @@ export type Buidl3QueryMethods = {
 async function init(contract: IContract) {
   const pool = this as DatabasePool;
 
-  const { id, address, genesis = 0 } = contract;
+  const { id = "", address = "" } = contract;
 
   return pool.query(sql`
-    INSERT INTO contracts (ct_id, ct_address, ct_tx_top, ct_ev_top)
-    VALUES (${id || ""}, ${address || ""}, ${genesis || -1}, ${genesis || -1})
+    INSERT INTO contracts (ct_id, ct_address)
+    VALUES (${id}, ${address})
   `);
 }
 
