@@ -21,7 +21,7 @@ async function init(contract: IContract) {
     ON CONFLICT DO NOTHING
   `);
 
-  await this.sync(contract);
+  await sync.call(this, contract);
 
   pool.realtime.notifications.on("ct_rehydrate", (payload) => {
     if (payload?.record?.ct_id !== id) return;
@@ -32,7 +32,7 @@ async function init(contract: IContract) {
 }
 
 async function sync(contract: IContract) {
-  const pool = this as DatabasePool;
+  const pool = this as Buidl3Pool;
 
   const { id = "" } = contract;
   const data = await pool.one(sql`SELECT * FROM contracts WHERE ct_id = ${id}`);
@@ -41,7 +41,7 @@ async function sync(contract: IContract) {
 }
 
 async function getContracts() {
-  const pool = this as DatabasePool;
+  const pool = this as Buidl3Pool;
 
   return pool.query(sql`SELECT * FROM contracts`);
 }
