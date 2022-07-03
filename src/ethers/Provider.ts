@@ -1,9 +1,13 @@
 import { ethers } from "ethers";
 
-export class Buidl3Provider extends ethers.providers.WebSocketProvider {
+export class Buidl3Provider {
+  provider: ethers.providers.WebSocketProvider;
+
   constructor(url, network) {
-    super(url, network);
+    this.provider = new ethers.providers.WebSocketProvider(url, network);
   }
+
+  restore(contract) {}
 }
 
 export function create(url, network?): Buidl3Provider {
