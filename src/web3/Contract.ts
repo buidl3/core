@@ -1,6 +1,23 @@
-export interface IContract {
+import { IRehydratable } from "../db/Concepts";
+
+export interface IContract extends IRehydratable {
   id?: string;
   address?: string;
+
+  // Internals
+  txTop?: number;
+  evTop?: number;
+}
+
+export function rehydrate(data) {
+  const contract = this as IContract;
+
+  const { ct_tx_top, ct_ev_top } = data;
+
+  contract.txTop = ct_tx_top;
+  contract.evTop = ct_ev_top;
+
+  if (contract.onRehydrate) contract.onRehydrate(data);
 }
 
 export class ContractBuilder<Contract extends IContract> {

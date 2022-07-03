@@ -6,8 +6,8 @@ import createSubscriber, { Subscriber } from "pg-listen";
 import type { Buidl3QueryMethods } from "./Query";
 import * as QueryMethods from "./Query";
 
-type Buidl3Subscriber = Subscriber<{ [channel: string]: any }>;
-type Buidl3Pool = DatabasePool &
+export type Buidl3Subscriber = Subscriber<{ [channel: string]: any }>;
+export type Buidl3Pool = DatabasePool &
   Buidl3QueryMethods & { realtime: Buidl3Subscriber };
 
 export async function create(): Promise<Buidl3Pool> {
