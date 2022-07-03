@@ -4,7 +4,9 @@ export {
   GenericContractBuilder as Contract,
 } from "./web3/Contract";
 
-import * as Provider from "./ethers/Provider";
 import * as DB from "./db/Connection";
+import * as Provider from "./web3/Provider";
 
-export { DB, Provider };
+import * as Buidl3 from "./Buidl3";
+
+export { DB, Provider, Buidl3 };

@@ -1,4 +1,4 @@
-import type { Buidl3Pool } from "./Connection";
+import type { Buidl3Database } from "./Connection";
 import type { DatabasePool, QueryResult, QueryResultRow } from "slonik";
 import { sql } from "slonik";
 
@@ -11,7 +11,7 @@ export type Buidl3QueryMethods = {
 };
 
 async function attach(contract: IContract) {
-  const pool = this as Buidl3Pool;
+  const pool = this as Buidl3Database;
 
   const { id = "", address = "" } = contract;
 
@@ -32,7 +32,7 @@ async function attach(contract: IContract) {
 }
 
 async function sync(contract: IContract) {
-  const pool = this as Buidl3Pool;
+  const pool = this as Buidl3Database;
 
   const { id = "" } = contract;
   const data = await pool.one(sql`SELECT * FROM contracts WHERE ct_id = ${id}`);
@@ -41,7 +41,7 @@ async function sync(contract: IContract) {
 }
 
 async function getContracts() {
-  const pool = this as Buidl3Pool;
+  const pool = this as Buidl3Database;
 
   return pool.query(sql`SELECT * FROM contracts`);
 }

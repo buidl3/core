@@ -7,10 +7,10 @@ import type { Buidl3QueryMethods } from "./Query";
 import * as QueryMethods from "./Query";
 
 export type Buidl3Subscriber = Subscriber<{ [channel: string]: any }>;
-export type Buidl3Pool = DatabasePool &
+export type Buidl3Database = DatabasePool &
   Buidl3QueryMethods & { realtime: Buidl3Subscriber };
 
-export async function create(): Promise<Buidl3Pool> {
+export async function create(): Promise<Buidl3Database> {
   const pool = await createPool(process.env.DB_CONNECT as string);
   const subscriber = createSubscriber({
     connectionString: process.env.DB_CONNECT as string,
