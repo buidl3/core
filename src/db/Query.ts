@@ -5,12 +5,12 @@ import { sql } from "slonik";
 import { IContract, rehydrate } from "../web3/Contract";
 
 export type Buidl3QueryMethods = {
-  init(IContract): Promise<boolean>;
+  attach(IContract): Promise<boolean>;
   sync(IContract): Promise<void>;
   getContracts(): Promise<QueryResult<QueryResultRow>>;
 };
 
-async function init(contract: IContract) {
+async function attach(contract: IContract) {
   const pool = this as Buidl3Pool;
 
   const { id = "", address = "" } = contract;
@@ -46,4 +46,4 @@ async function getContracts() {
   return pool.query(sql`SELECT * FROM contracts`);
 }
 
-export { init, sync, getContracts };
+export { attach, sync, getContracts };
