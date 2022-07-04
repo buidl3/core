@@ -32,7 +32,7 @@ export class ContractBuilder<Contract extends IContract> {
     return this;
   }
 
-  public create() {
+  public build() {
     return this.contract;
   }
 }
