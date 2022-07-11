@@ -8,8 +8,7 @@
     "dist"
   ],
   "exports": {
-    ".": "./dist/index.js",
-    "./web3": "./dist/web3/index.js"
+    ".": "./dist/index.js"
   },
   "scripts": {
     "clean": "rimraf lib types",
@@ -27,21 +26,24 @@
     "url": "https://github.com/buidl3/core.git"
   },
   "devDependencies": {
-    "@types/jest": "^27.5.0",
-    "@types/node": "^17.0.32",
-    "prettier": "^2.6.2",
+    "@types/jest": "^28.1.4",
+    "@types/node": "^18.0.3",
+    "prettier": "^2.7.1",
     "rimraf": "^3.0.2",
     "tslint": "^5.20.1",
-    "tslint-config-common": "^1.6.0",
-    "typescript": "^3.9.10"
+    "tslint-config-common": "^1.6.2",
+    "typescript": "^4.7.4"
   },
   "engines": {
     "node": ">= 16.0.0"
   },
   "license": "MIT",
   "dependencies": {
-    "ethers": "^5.6.5",
+    "@ethereumjs/common": "^2.6.5",
+    "@ethereumjs/block": "^3.6.3",
+    "@ethereumjs/devp2p": "^4.2.2",
+    "ethers": "^5.6.9",
     "pg-listen": "^1.7.0",
-    "slonik": "^28.1.0"
+    "slonik": "^28.1.1"
   }
 }

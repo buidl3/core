@@ -1,10 +1,19 @@
-export { IContract } from "./web3/Contract";
+export * from "./db/Concepts";
+export * from "./web3/Concepts";
 
-import * as Contract from "./web3/Contract";
+export * as DB from "./db/Connection";
+export * as Contract from "./web3/Contract";
 
-import * as DB from "./db/Connection";
-import * as Provider from "./web3/Provider";
+export * as EthersProvider from "./web3/Ethers";
+export * as P2PProvider from "./web3/P2P";
 
-import * as Buidl3 from "./Buidl3";
+import { EthersProvider } from "./web3/Ethers";
+import { P2PProvider } from "./web3/P2P";
 
-export { Contract, DB, Provider, Buidl3 };
+export const Providers = {
+  EthersProvider,
+  P2PProvider,
+};
+
+export * as Config from "./config";
+export * from "./Buidl3";

@@ -1,8 +1,5 @@
-import { ethers } from "ethers";
+type CleanupFunc = () => void;
 
-export class Buidl3Provider extends ethers.providers.WebSocketProvider {}
-
-export function create(): Buidl3Provider {
-  const url = process.env.NODE_URL as string;
-  return new Buidl3Provider(url);
+export interface Buidl3Provider {
+  watchBlocks(from: number, onBlock: () => any): CleanupFunc;
 }

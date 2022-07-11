@@ -1,13 +1,4 @@
-import { IRehydratable } from "../db/Concepts";
-
-export interface IContract extends IRehydratable {
-  id?: string;
-  address?: string;
-
-  // Internals
-  txTop?: number;
-  evTop?: number;
-}
+import type { IContract } from "./Concepts";
 
 export function rehydrate(data) {
   const contract = this as IContract;

@@ -2,12 +2,15 @@ import type { Buidl3Database } from "./Connection";
 import type { DatabasePool, QueryResult, QueryResultRow } from "slonik";
 import { sql } from "slonik";
 
-import { IContract, rehydrate } from "../web3/Contract";
+import type { IContract } from "../web3/Concepts";
+import { rehydrate } from "../web3/Contract";
 
 export type Buidl3QueryMethods = {
   attach(IContract): Promise<boolean>;
   sync(IContract): Promise<void>;
+
   getContracts(): Promise<QueryResult<QueryResultRow>>;
+  getBlocks(from: number, to: number): Promise<QueryResult<QueryResultRow>>;
 };
 
 async function attach(contract: IContract) {
@@ -46,4 +49,12 @@ async function getContracts() {
   return pool.query(sql`SELECT * FROM contracts`);
 }
 
-export { attach, sync, getContracts };
+async function getBlocks(from: number, to: number = Number.MAX_SAFE_INTEGER) {
+  const pool = this as Buidl3Database;
+
+  return pool.query(
+    sql`SELECT * FROM blocks WHERE bl_number >= ${from} AND bl_number <= ${to}`
+  );
+}
+
+export { attach, sync, getContracts, getBlocks };
