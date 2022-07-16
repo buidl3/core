@@ -1,5 +1,9 @@
+import type { Block } from "./Concepts";
+
 type CleanupFunc = () => void;
 
 export interface Buidl3Provider {
-  watchBlocks(from: number, onBlock: () => any): CleanupFunc;
+  getLatestBlock(): Promise<Block>;
+
+  watchBlocks(onBlock: (block: Block) => void): CleanupFunc;
 }
