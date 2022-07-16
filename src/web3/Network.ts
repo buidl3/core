@@ -5,7 +5,9 @@ export interface EthersConfig {
   fallbackNodeUrl?: string;
 }
 
-export interface P2PConfig {}
+export interface P2PConfig {
+  peers?: number;
+}
 
 type NetworkConfig = CommonOpts & { ethers: EthersConfig; p2p: P2PConfig };
 

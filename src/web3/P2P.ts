@@ -48,7 +48,7 @@ export class P2PProvider implements Buidl3Provider {
 
     this.rlpx = new RLPx(PRIVATE_KEY, {
       dpt: this.dpt,
-      maxPeers: 50,
+      maxPeers: network.p2p?.peers || 50,
       capabilities: [ETH.eth66],
       common: this.network,
       remoteClientIdFilter: REMOTE_CLIENTID_FILTER,
