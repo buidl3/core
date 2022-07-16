@@ -4,10 +4,12 @@ export interface Block {
   hash: string;
   parent: string;
 
-  number: string;
+  number: number;
   chain: number;
 
   timestamp?: string;
+
+  raw?: any;
 }
 
 export interface IContract extends IRehydratable {
