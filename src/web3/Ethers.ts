@@ -1,18 +1,44 @@
 import type { Buidl3Provider } from "./Provider";
+import type { Block } from "./Concepts";
 
-import { EthersConfig, Network } from "./Network";
+import { Network } from "./Network";
 import { ethers } from "ethers";
 
-export class EthersProvider
-  extends ethers.providers.WebSocketProvider
-  implements Buidl3Provider
-{
+export class EthersProvider implements Buidl3Provider {
+  provider: ethers.providers.WebSocketProvider;
+
   constructor(url: string, network: ethers.providers.Networkish) {
-    super(url, network);
+    this.provider = new ethers.providers.WebSocketProvider(url, network);
   }
 
-  watchBlocks(from, onBlock) {
-    return () => {};
+  async getLatestBlock() {
+    const top = await this.provider.getBlockNumber();
+    const block = await this.provider.getBlock(top);
+
+    return this.parseBlock(block);
+  }
+
+  watchBlocks(onBlock) {
+    async function handleBlock(blockNumber) {
+      const block = await this.getBlock(blockNumber);
+      onBlock(this.parseBlock(block));
+    }
+
+    this.provider.on("block", handleBlock);
+    return () => {
+      this.provider.off("block", handleBlock);
+    };
+  }
+
+  private parseBlock(block: ethers.providers.Block): Block {
+    return {
+      hash: block.hash,
+      parent: block.parentHash,
+      number: block.number,
+      chain: this.provider.network.chainId,
+
+      raw: JSON.stringify(block),
+    };
   }
 }
 
