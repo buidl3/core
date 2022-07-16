@@ -11,11 +11,40 @@ export class EthersProvider implements Buidl3Provider {
     this.provider = new ethers.providers.WebSocketProvider(url, network);
   }
 
+  getChain(): number {
+    return this.provider.network.chainId;
+  }
+
   async getLatestBlock() {
     const top = await this.provider.getBlockNumber();
     const block = await this.provider.getBlock(top);
 
     return this.parseBlock(block);
+  }
+
+  async getBlock(number: number) {
+    const block = await this.provider.getBlock(number);
+    return this.parseBlock(block);
+  }
+
+  async getBlocks(
+    from: number,
+    to: number,
+    onBlock?: (Block) => void
+  ): Promise<Array<Block>> {
+    let i = from;
+
+    const blocks: Array<Block> = [];
+
+    while (i < to) {
+      const block = this.parseBlock(await this.provider.getBlock(i));
+      if (!!onBlock) onBlock(block);
+
+      blocks.push(block);
+      ++i;
+    }
+
+    return blocks;
   }
 
   watchBlocks(onBlock) {

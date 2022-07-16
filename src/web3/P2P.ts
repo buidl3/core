@@ -31,7 +31,7 @@ export class P2PProvider implements Buidl3Provider {
   peers: Map<number, Peer>;
   requests: RequestManager;
 
-  constructor(network: Common) {
+  constructor(network: Network) {
     this.network = network;
 
     this.events = new EventEmitter();
@@ -133,8 +133,161 @@ export class P2PProvider implements Buidl3Provider {
       this.dpt.bootstrap(node as any).catch((err) => {});
   }
 
-  public getLatestBlock(): Promise<Block> {
+  getChain(): number {
+    return this.network.chainIdBN().toNumber();
+  }
+
+  getLatestBlock(): Promise<Block> {
     throw "getLatestBlock is not supported for P2P!";
+  }
+
+  async getBlock(number: number): Promise<Block> {
+    let block: any = null;
+
+    var resolve;
+    const done = new Promise((f) => {
+      resolve = f;
+    });
+
+    const common = this.network;
+
+    const requestBlock = async (protocol) => {
+      const nextIndex = await this.requests.next("GET_ONE", number);
+
+      protocol.sendMessage(ETH.MESSAGE_CODES.GET_BLOCK_HEADERS, [
+        Buffer.from([nextIndex]),
+        [
+          int2buffer(number),
+          Buffer.from([1]),
+          Buffer.from([]),
+          Buffer.from([1]),
+        ],
+      ]);
+    };
+
+    const onMessage = async (protocol, code, payload) => {
+      const index = buffer2int(payload[0]);
+      const request = this.requests.at(index);
+
+      if (!request) return;
+      if (request.type !== "GET_ONE" && request.extra !== number) return;
+
+      if (code === ETH.MESSAGE_CODES.BLOCK_HEADERS) {
+        const header = this.parseHeader(common, payload);
+        if (!header) return requestBlock(protocol);
+
+        this.requests.done(index);
+
+        block = this.toBlock(header);
+        return resolve();
+      }
+
+      requestBlock(protocol);
+    };
+
+    const $onMessage = curry(onMessage);
+    function handlePeer(peer) {
+      if (!peer) return;
+
+      const protocol = (peer as Peer).getProtocols()[0];
+      protocol.on("message", $onMessage(protocol));
+      requestBlock(protocol);
+    }
+
+    for (const [_, peer] of this.peers) handlePeer(peer);
+    this.events.on("peer:added", handlePeer);
+
+    await done;
+
+    this.events.removeListener("peer:added", handlePeer);
+    return block as Block;
+  }
+
+  async getBlocks(
+    from: number,
+    to: number,
+    onBlock?: (Block) => void
+  ): Promise<Array<Block>> {
+    const blocks: Array<Block> = [];
+
+    var resolve;
+    const done = new Promise((r) => {
+      resolve = r;
+    });
+
+    const parent = await this.getBlock(from - 1);
+
+    const common = this.network;
+    const current = {
+      block: from,
+      parent: Buffer.from(parent.hash, "hex"),
+    };
+
+    const requestNextBlock = async (protocol) => {
+      if (current.block > to) return resolve();
+
+      const nextIndex = await this.requests.next("GET", current.block);
+
+      protocol.sendMessage(ETH.MESSAGE_CODES.GET_BLOCK_HEADERS, [
+        Buffer.from([nextIndex]),
+        [
+          int2buffer(current.block),
+          Buffer.from([1]),
+          Buffer.from([]),
+          Buffer.from([1]),
+        ],
+      ]);
+    };
+
+    const onMessage = async (protocol, code, payload) => {
+      const index = buffer2int(payload[0]);
+      const request = this.requests.at(index);
+
+      if (!request) return;
+      if (request.type !== "GET") return;
+
+      if (code === ETH.MESSAGE_CODES.BLOCK_HEADERS) {
+        const header = this.parseHeader(common, payload);
+        if (!header) return;
+
+        if (Buffer.compare(header.parentHash, current.parent) == 0) {
+          request.extra = header;
+          protocol.sendMessage(ETH.MESSAGE_CODES.GET_BLOCK_BODIES, [
+            payload[0],
+            [header.hash()],
+          ]);
+
+          blocks.push(this.toBlock(header));
+          ++current.block, (current.parent = header.hash());
+        }
+      }
+
+      if (code === ETH.MESSAGE_CODES.BLOCK_BODIES) {
+        const header = request.extra as BlockHeader;
+        if (!header) return;
+
+        if (Buffer.compare(header.parentHash, current.parent) == 0) {
+          ++current.block, (current.parent = header.hash());
+        }
+      }
+
+      requestNextBlock(protocol);
+    };
+
+    const $onMessage = curry(onMessage);
+    function handlePeer(peer) {
+      const protocol = (peer as Peer).getProtocols()[0];
+      protocol.on("message", $onMessage(protocol));
+      requestNextBlock(protocol);
+    }
+
+    for (const [_, peer] of this.peers) handlePeer(peer);
+    this.events.on("peer:added", handlePeer);
+
+    await done;
+
+    this.events.removeListener("peer:added", handlePeer);
+    return blocks;
   }
 
   public watchBlocks(onBlock): () => void {
@@ -210,7 +363,7 @@ export class P2PProvider implements Buidl3Provider {
       requestNextBlock(protocol);
     }
 
-    for (const peer of this.peers) handlePeer(peer);
+    for (const [_, peer] of this.peers) handlePeer(peer);
     this.events.on("peer:added", handlePeer);
 
     return () => {
@@ -218,12 +371,24 @@ export class P2PProvider implements Buidl3Provider {
     };
   }
 
-  private parseBlock(block: BlockHeader): Block {
+  private parseHeader(common, payload: any) {
+    if (payload[1].length > 1) return null; // More than one block
+
+    try {
+      return BlockHeader.fromValuesArray(payload[1][0], { common });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private toBlock(block: BlockHeader): Block {
     return {
-      hash: block.hash.toString(),
-      parent: block.parentHash.toString(),
+      hash: block.hash().toString("hex"),
+      parent: block.parentHash.toString("hex"),
+      timestamp: block.timestamp.toNumber(),
       number: block.number.toNumber(),
       chain: this.network.chainIdBN().toNumber(),
+      raw: JSON.stringify(block),
     };
   }
 }
@@ -242,7 +407,7 @@ class RequestManager {
     this.index = 0;
   }
 
-  async next(type: string, extra: string = "") {
+  async next(type: string, extra: any = "") {
     if (Object.keys(this.requests).length >= 255)
       await new Promise((resolve) => this.queue.push(resolve));
 
