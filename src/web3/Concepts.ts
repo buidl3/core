@@ -17,6 +17,7 @@ export interface IContract extends IRehydratable {
   address?: string;
 
   // Internals
+  genesis?: number;
   txTop?: number;
   evTop?: number;
 }

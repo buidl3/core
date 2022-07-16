@@ -23,6 +23,11 @@ export class ContractBuilder<Contract extends IContract> {
     return this;
   }
 
+  public setGenesis(number: number) {
+    this.contract.genesis = number;
+    return this;
+  }
+
   public build() {
     return this.contract;
   }
