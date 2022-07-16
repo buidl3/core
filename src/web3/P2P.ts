@@ -1,8 +1,9 @@
 import type { Buidl3Provider } from "./Provider";
 
+import type { Block } from "./Concepts";
 import { Network } from "./Network";
 
-import { Block, BlockHeader } from "@ethereumjs/block";
+import { BlockHeader } from "@ethereumjs/block";
 import Common from "@ethereumjs/common";
 import {
   DPT,
@@ -11,6 +12,7 @@ import {
   Peer as _Peer,
   int2buffer,
   buffer2int,
+  DISCONNECT_REASONS,
 } from "@ethereumjs/devp2p";
 
 import { randomBytes } from "crypto";
@@ -27,10 +29,13 @@ export class P2PProvider implements Buidl3Provider {
 
   events: EventEmitter;
   peers: Map<number, Peer>;
+  requests: RequestManager;
 
   constructor(network: Common) {
     this.network = network;
+
     this.events = new EventEmitter();
+    this.requests = new RequestManager();
 
     this.dpt = new DPT(PRIVATE_KEY, {
       refreshInterval: 30000,
@@ -43,7 +48,7 @@ export class P2PProvider implements Buidl3Provider {
 
     this.rlpx = new RLPx(PRIVATE_KEY, {
       dpt: this.dpt,
-      maxPeers: 10,
+      maxPeers: 50,
       capabilities: [ETH.eth66],
       common: this.network,
       remoteClientIdFilter: REMOTE_CLIENTID_FILTER,
@@ -60,7 +65,11 @@ export class P2PProvider implements Buidl3Provider {
     this.rlpx.on("peer:added", (peer: Peer) => {
       peer.peerId = current.peerId++;
 
-      const protocol = peer.getProtocols()[0];
+      const protocol = peer.getProtocols()[0] as any;
+
+      const afkTimeout = setTimeout(() => {
+        peer.disconnect(DISCONNECT_REASONS.USELESS_PEER);
+      }, 10000);
 
       protocol.sendStatus({
         td: int2buffer(genesis.difficulty),
@@ -69,8 +78,19 @@ export class P2PProvider implements Buidl3Provider {
       } as any);
 
       protocol.once("status", (status) => {
+        clearTimeout(afkTimeout);
+
         this.peers.set(peer.peerId, peer);
         this.events.emit("peer:added", peer);
+      });
+
+      protocol.on("message", async (code, payload) => {
+        if (code === ETH.MESSAGE_CODES.GET_BLOCK_HEADERS) {
+          protocol.sendMessage(ETH.MESSAGE_CODES.BLOCK_HEADERS, [
+            payload[0],
+            [],
+          ]);
+        }
       });
     });
 
@@ -79,7 +99,6 @@ export class P2PProvider implements Buidl3Provider {
     });
 
     this.bootstrap();
-
     setInterval(() => {
       const peersCount = this.dpt.getPeers().length;
       if (peersCount <= 0) this.bootstrap();
@@ -114,20 +133,26 @@ export class P2PProvider implements Buidl3Provider {
       this.dpt.bootstrap(node as any).catch((err) => {});
   }
 
-  public watchBlocks(from, onBlock) {
+  public getLatestBlock(): Promise<Block> {
+    throw "getLatestBlock is not supported for P2P!";
+  }
+
+  public watchBlocks(onBlock): () => void {
     const common = this.network;
     const current = {
-      block: from,
+      block: 1,
       parent: Buffer.from(
-        "d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"
+        "d4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",
+        "hex"
       ),
+      counter: 0,
     };
 
-    function requestNextBlock(protocol) {
-      if (!protocol.index) protocol.index = 1;
+    const requestNextBlock = async (protocol) => {
+      const nextIndex = await this.requests.next("WATCH");
 
       protocol.sendMessage(ETH.MESSAGE_CODES.GET_BLOCK_HEADERS, [
-        Buffer.from([++protocol.index]),
+        Buffer.from([nextIndex]),
         [
           int2buffer(current.block),
           Buffer.from([1]),
@@ -135,44 +160,48 @@ export class P2PProvider implements Buidl3Provider {
           Buffer.from([1]),
         ],
       ]);
-    }
+    };
 
-    async function onMessage(protocol, code, payload) {
-      if (code > 4) return;
+    const onMessage = async (protocol, code, payload) => {
+      const index = buffer2int(payload[0]);
+      const request = this.requests.at(index);
+
+      if (!request) return;
+      if (request.type !== "WATCH") return;
 
       switch (code) {
-        case ETH.MESSAGE_CODES.GET_BLOCK_HEADERS: {
-          const headers = [];
-
-          protocol.sendMessage(ETH.MESSAGE_CODES.BLOCK_HEADERS, [
-            payload[0],
-            headers,
-          ]);
-          break;
-        }
-
         case ETH.MESSAGE_CODES.BLOCK_HEADERS: {
           if (payload[1].length > 1) break; // More than one block
 
-          try {
-            const header = BlockHeader.fromValuesArray(payload[1][0], {
-              common,
-            });
+          const header = BlockHeader.fromValuesArray(payload[1][0], {
+            common,
+          });
 
-            if (Buffer.compare(header.parentHash, current.parent) == 0) {
-              current.parent = header.hash();
-              ++current.block;
-            }
+          if (Buffer.compare(header.parentHash, current.parent) == 0) {
+            request.extra = header;
 
-            onBlock(header);
+            protocol.sendMessage(ETH.MESSAGE_CODES.GET_BLOCK_BODIES, [
+              payload[0],
+              [header.hash()],
+            ]);
 
-            requestNextBlock(protocol);
-          } catch (error) {}
+            current.parent = header.hash();
+            ++current.block;
+          } else requestNextBlock(protocol);
 
           break;
         }
+        case ETH.MESSAGE_CODES.BLOCK_BODIES: {
+          const header = request.extra as BlockHeader;
+          if (!header) return;
+
+          this.requests.done(index);
+          requestNextBlock(protocol);
+          ++current.counter;
+          break;
+        }
       }
-    }
+    };
 
     const $onMessage = curry(onMessage);
     function handlePeer(peer) {
@@ -187,6 +216,55 @@ export class P2PProvider implements Buidl3Provider {
     return () => {
       this.events.removeListener("peer:added", handlePeer);
     };
+  }
+
+  private parseBlock(block: BlockHeader): Block {
+    return {
+      hash: block.hash.toString(),
+      parent: block.parentHash.toString(),
+      number: block.number.toNumber(),
+      chain: this.network.chainIdBN().toNumber(),
+    };
+  }
+}
+
+type Request = { type: string; extra: any; _timeout: NodeJS.Timeout };
+class RequestManager {
+  queue: Array<any>;
+  requests: { [index: number]: Request };
+
+  index: number;
+
+  constructor() {
+    this.requests = {};
+    this.queue = [];
+
+    this.index = 0;
+  }
+
+  async next(type: string, extra: string = "") {
+    if (Object.keys(this.requests).length >= 255)
+      await new Promise((resolve) => this.queue.push(resolve));
+
+    let index = ++this.index % 255;
+    while (this.requests[index]) index = ++this.index % 255;
+
+    const timeout = setTimeout(() => this.done(index), 10000);
+    this.requests[index] = { type, extra, _timeout: timeout };
+    return index;
+  }
+
+  clear(peer: any) {}
+
+  done(index: number) {
+    clearTimeout(this.requests[index]._timeout);
+    delete this.requests[index];
+
+    this.queue.shift()?.();
+  }
+
+  at(index: number) {
+    return this.requests[index];
   }
 }
 
