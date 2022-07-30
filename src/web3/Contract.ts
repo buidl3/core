@@ -14,8 +14,8 @@ export function rehydrate(data) {
 export class ContractBuilder<Contract extends IContract> {
   contract: Contract;
 
-  constructor(id: string, config: Contract) {
-    this.contract = { id, ...config };
+  constructor(id: string) {
+    this.contract.id = id;
   }
 
   public setAddress(address: string) {
@@ -36,5 +36,5 @@ export class ContractBuilder<Contract extends IContract> {
 export class GenericContractBuilder extends ContractBuilder<IContract> {}
 
 export function create(id): GenericContractBuilder {
-  return new GenericContractBuilder(id, {});
+  return new GenericContractBuilder(id);
 }
