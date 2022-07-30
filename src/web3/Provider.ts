@@ -1,7 +1,7 @@
 import type { Block } from "./Concepts";
 
 type CleanupFunc = () => void;
-type BlockCallback = (Block) => void;
+type BlockCallback = (block: Block) => void;
 
 export interface Buidl3Provider {
   getChain(): number;

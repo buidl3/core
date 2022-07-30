@@ -30,7 +30,7 @@ export class EthersProvider implements Buidl3Provider {
   async getBlocks(
     from: number,
     to: number,
-    onBlock?: (Block) => void
+    onBlock?: (block: Block) => void
   ): Promise<Array<Block>> {
     let i = from;
 

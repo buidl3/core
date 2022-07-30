@@ -99,12 +99,15 @@ export class P2PProvider implements Buidl3Provider {
     });
 
     this.bootstrap();
+
+    /* DEBUG
     setInterval(() => {
       const peersCount = this.dpt.getPeers().length;
       if (peersCount <= 0) this.bootstrap();
 
       console.log(`Total nodes in DPT: ${peersCount}`);
     }, 5000);
+    */
   }
 
   private bootstrap() {
@@ -206,7 +209,7 @@ export class P2PProvider implements Buidl3Provider {
   async getBlocks(
     from: number,
     to: number,
-    onBlock?: (Block) => void
+    onBlock?: (block: Block) => void
   ): Promise<Array<Block>> {
     const blocks: Array<Block> = [];
 
@@ -257,17 +260,12 @@ export class P2PProvider implements Buidl3Provider {
             [header.hash()],
           ]);
 
-          blocks.push(this.toBlock(header));
-          ++current.block, (current.parent = header.hash());
-        }
-      }
+          const block = this.toBlock(header);
 
-      if (code === ETH.MESSAGE_CODES.BLOCK_BODIES) {
-        const header = request.extra as BlockHeader;
-        if (!header) return;
-
-        if (Buffer.compare(header.parentHash, current.parent) == 0) {
+          blocks.push(block);
           ++current.block, (current.parent = header.hash());
+
+          if (onBlock) onBlock(block);
         }
       }
 
@@ -324,7 +322,7 @@ export class P2PProvider implements Buidl3Provider {
 
       switch (code) {
         case ETH.MESSAGE_CODES.BLOCK_HEADERS: {
-          if (payload[1].length > 1) break; // More than one block
+          if (!payload?.[1] || payload[1].length > 1) break; // More than one block
 
           const header = BlockHeader.fromValuesArray(payload[1][0], {
             common,
@@ -372,7 +370,7 @@ export class P2PProvider implements Buidl3Provider {
   }
 
   private parseHeader(common, payload: any) {
-    if (payload[1].length > 1) return null; // More than one block
+    if (!payload?.[1] || payload[1].length > 1) return null; // More than one block
 
     try {
       return BlockHeader.fromValuesArray(payload[1][0], { common });
