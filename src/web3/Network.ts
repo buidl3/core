@@ -1,8 +1,11 @@
 import Common, { CommonOpts, Chain, Hardfork } from "@ethereumjs/common";
 
 export interface EthersConfig {
-  nodeUrl?: string;
-  fallbackNodeUrl?: string;
+  http?: string;
+  fallbackHttp?: string;
+
+  ws?: string;
+  fallbackWs?: string;
 }
 
 export interface P2PConfig {

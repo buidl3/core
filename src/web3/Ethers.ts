@@ -81,10 +81,10 @@ export async function create(networkId: string): Promise<EthersProvider> {
   }
 
   const { ethers } = network;
-  if (!ethers?.nodeUrl) throw "Provider URL was not provided!";
+  if (!ethers?.ws) throw "Provider URL was not provided!";
 
   return new EthersProvider(
-    ethers?.nodeUrl as string,
+    ethers?.ws as string,
     network.chainIdBN().toNumber()
   );
 }
