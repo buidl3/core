@@ -1,7 +1,11 @@
-import type { Block } from "./Concepts";
+import type { Block, Event } from "./Concepts";
+import { ethers } from "ethers";
 
-type CleanupFunc = () => void;
-type BlockCallback = (block: Block) => void;
+export type EventFilter = ethers.providers.Filter;
+
+export type CleanupFunc = () => void;
+export type BlockCallback = (block: Block) => void;
+export type EventCallback = (event: Event) => void;
 
 export interface Buidl3Provider {
   getChain(): number;
@@ -14,4 +18,11 @@ export interface Buidl3Provider {
     onBlock?: BlockCallback
   ): Promise<Array<Block>>;
   watchBlocks(onBlock: BlockCallback): CleanupFunc;
+
+  getEvents(
+    filter: EventFilter,
+    from: number,
+    to: number
+  ): Promise<Array<Event>>;
+  watchEvents(filter, onEvent: EventCallback): CleanupFunc;
 }

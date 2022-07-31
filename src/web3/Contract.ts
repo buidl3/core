@@ -13,7 +13,7 @@ export function rehydrate(data) {
 }
 
 export class ContractBuilder<Contract extends IContract> {
-  contract: Contract;
+  contract: Partial<Contract> = {};
 
   constructor(id: string) {
     this.contract.id = id;
@@ -31,12 +31,11 @@ export class ContractBuilder<Contract extends IContract> {
   }
 
   public build() {
+    this.contract.evTop = this.contract.genesis;
+    this.contract.txTop = this.contract.genesis;
+
     return this.contract;
   }
 }
 
-export class GenericContractBuilder extends ContractBuilder<IContract> {}
-
-export function create(id): GenericContractBuilder {
-  return new GenericContractBuilder(id);
-}
+export class GenericContractBuilder extends ContractBuilder<IContract> { }

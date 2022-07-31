@@ -1,5 +1,5 @@
-import type { Buidl3Provider } from "./Provider";
-import type { Block } from "./Concepts";
+import type { Buidl3Provider, CleanupFunc, EventCallback, EventFilter } from "./Provider";
+import type { Block, Event } from "./Concepts";
 
 import { Network } from "./Network";
 import { ethers } from "ethers";
@@ -59,6 +59,23 @@ export class EthersProvider implements Buidl3Provider {
     };
   }
 
+  async getEvents(
+    filter: EventFilter,
+    from: number,
+    to: number
+  ): Promise<Event[]> {
+    filter.fromBlock = from;
+    filter.toBlock = to;
+
+    const logs = await this.provider.getLogs(filter);
+    return logs.map(log => this.parseEvent(log));
+  }
+
+  watchEvents(filter: any, onEvent: EventCallback): CleanupFunc {
+    this.provider.on(filter, onEvent);
+    return () => this.provider.off(filter, onEvent);
+  }
+
   private parseBlock(block: ethers.providers.Block): Block {
     return {
       hash: block.hash,
@@ -66,7 +83,19 @@ export class EthersProvider implements Buidl3Provider {
       number: block.number,
       chain: this.provider.network.chainId,
 
-      raw: JSON.stringify(block),
+      raw: block,
+    };
+  }
+
+  private parseEvent(event: ethers.providers.Log): Event {
+    return {
+      block: event.blockNumber,
+      blockHash: event.blockHash,
+      index: event.logIndex,
+      data: event.data,
+      chain: this.provider.network.chainId,
+
+      raw: event
     };
   }
 }

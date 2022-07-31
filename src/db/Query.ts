@@ -2,12 +2,16 @@ import type { Buidl3Database } from "./Connection";
 import type { DatabasePool, QueryResult, QueryResultRow } from "slonik";
 import { sql } from "slonik";
 
-import type { IContract } from "../web3/Concepts";
+import type { Extra } from "./Concepts";
+import type { IContract, Block, Event } from "../web3/Concepts";
 import { rehydrate } from "../web3/Contract";
 
 export type Buidl3QueryMethods = {
-  attach(IContract): Promise<boolean>;
-  sync(IContract): Promise<void>;
+  attach(contract: IContract): Promise<boolean>;
+  sync(contract: IContract): Promise<void>;
+
+  putBlock(block: Block, extra?: Extra): Promise<boolean>;
+  putEvent(event: Event, extra?: Extra): Promise<boolean>;
 
   getContracts(): Promise<QueryResult<QueryResultRow>>;
   getBlocks(from: number, to: number): Promise<QueryResult<QueryResultRow>>;
@@ -49,6 +53,22 @@ async function getContracts() {
   return pool.query(sql`SELECT * FROM contracts`);
 }
 
+async function putBlock(block: Block, extra: Extra | null = null): Promise<boolean> {
+  const pool = this as Buidl3Database;
+
+  const _extra = extra ? JSON.stringify(extra) : null;
+  const _raw = block.raw ? JSON.stringify(block.raw) : null;
+
+  await pool.query(sql`
+    INSERT INTO blocks (bl_hash, bl_parent, bl_number, bl_timestamp, bl_chain, bl_extra, bl_raw)
+    VALUES (${block.hash}, ${block.parent}, ${block.number}, ${block.timestamp || null}, ${block.chain}, ${_extra}, ${_raw})
+    ON CONFLICT (bl_number, bl_hash, bl_chain) DO UPDATE
+    SET ev_extra = ${_extra}, ev_raw = ${_raw}
+  `);
+
+  return true;
+}
+
 async function getBlocks(from: number, to: number = Number.MAX_SAFE_INTEGER) {
   const pool = this as Buidl3Database;
 
@@ -57,4 +77,20 @@ async function getBlocks(from: number, to: number = Number.MAX_SAFE_INTEGER) {
   );
 }
 
-export { attach, sync, getContracts, getBlocks };
+async function putEvent(event: Event, extra?: Extra): Promise<boolean> {
+  const pool = this as Buidl3Database;
+
+  const _extra = extra ? JSON.stringify(extra) : null;
+  const _raw = event.raw ? JSON.stringify(event.raw) : null;
+
+  await pool.query(sql`
+    INSERT INTO events (ev_block, ev_bhash, ev_index, ev_data, ev_chain, ev_extra, ev_raw)
+    VALUES (${event.block}, ${event.blockHash}, ${event.index}, ${event.data}, ${event.chain}, ${_extra}, ${_raw})
+    ON CONFLICT (ev_block, ev_bhash, ev_index, ev_chain) DO UPDATE
+    SET ev_extra = ${_extra}, ev_raw = ${_raw}
+  `);
+
+  return true;
+}
+
+export { attach, sync, getContracts, getBlocks, putBlock, putEvent };

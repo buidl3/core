@@ -1,6 +1,12 @@
-import type { Buidl3Provider } from "./Provider";
+import type {
+  Buidl3Provider,
+  CleanupFunc,
+  EventFilter,
+  BlockCallback,
+  EventCallback,
+} from "./Provider";
 
-import type { Block } from "./Concepts";
+import type { Block, Event } from "./Concepts";
 import { Network } from "./Network";
 
 import { BlockHeader } from "@ethereumjs/block";
@@ -54,8 +60,8 @@ export class P2PProvider implements Buidl3Provider {
       remoteClientIdFilter: REMOTE_CLIENTID_FILTER,
     });
 
-    this.dpt.on("error", (err) => {});
-    this.rlpx.on("error", (err) => {});
+    this.dpt.on("error", (err) => { });
+    this.rlpx.on("error", (err) => { });
 
     const genesis = this.network.genesis();
 
@@ -133,7 +139,7 @@ export class P2PProvider implements Buidl3Provider {
     });
 
     for (const node of BOOTNODES)
-      this.dpt.bootstrap(node as any).catch((err) => {});
+      this.dpt.bootstrap(node as any).catch((err) => { });
   }
 
   getChain(): number {
@@ -369,6 +375,18 @@ export class P2PProvider implements Buidl3Provider {
     };
   }
 
+  public getEvents(
+    filter: EventFilter,
+    from: number,
+    to: number
+  ): Promise<Array<Event>> {
+    throw "Not implemented";
+  }
+
+  watchEvents(filter: EventFilter, onEvent: EventCallback): CleanupFunc {
+    throw "Not implemented";
+  }
+
   private parseHeader(common, payload: any) {
     if (!payload?.[1] || payload[1].length > 1) return null; // More than one block
 
@@ -386,7 +404,7 @@ export class P2PProvider implements Buidl3Provider {
       timestamp: block.timestamp.toNumber(),
       number: block.number.toNumber(),
       chain: this.network.chainIdBN().toNumber(),
-      raw: JSON.stringify(block),
+      raw: block,
     };
   }
 }
@@ -417,7 +435,7 @@ class RequestManager {
     return index;
   }
 
-  clear(peer: any) {}
+  clear(peer: any) { }
 
   done(index: number) {
     clearTimeout(this.requests[index]._timeout);
