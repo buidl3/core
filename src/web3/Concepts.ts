@@ -20,4 +20,5 @@ export interface IContract extends IRehydratable {
   genesis?: number;
   txTop?: number;
   evTop?: number;
+  synced: boolean;
 }
