@@ -6,6 +6,9 @@ export interface EthersConfig {
 
   ws?: string;
   fallbackWs?: string;
+
+  /** When set it splits getLogs calls into smaller parts (blockticks) **/
+  blocktick?: number;
 }
 
 export interface P2PConfig {

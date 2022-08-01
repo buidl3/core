@@ -1,14 +1,24 @@
-import type { Buidl3Provider, CleanupFunc, EventCallback, EventFilter } from "./Provider";
+import type {
+  Buidl3Provider,
+  CleanupFunc,
+  EventCallback,
+  EventFilter,
+} from "./Provider";
 import type { Block, Event } from "./Concepts";
 
 import { Network } from "./Network";
 import { ethers } from "ethers";
 
 export class EthersProvider implements Buidl3Provider {
+  network: Network;
   provider: ethers.providers.WebSocketProvider;
 
-  constructor(url: string, network: ethers.providers.Networkish) {
-    this.provider = new ethers.providers.WebSocketProvider(url, network);
+  constructor(url: string, network: Network) {
+    this.network = network;
+    this.provider = new ethers.providers.WebSocketProvider(
+      url,
+      network.chainIdBN().toNumber()
+    );
   }
 
   getChain(): number {
@@ -37,11 +47,10 @@ export class EthersProvider implements Buidl3Provider {
     const blocks: Array<Block> = [];
 
     while (i < to) {
-      const block = this.parseBlock(await this.provider.getBlock(i));
+      const block = this.parseBlock(await this.provider.getBlock(i++));
       if (!!onBlock) onBlock(block);
 
       blocks.push(block);
-      ++i;
     }
 
     return blocks;
@@ -64,11 +73,34 @@ export class EthersProvider implements Buidl3Provider {
     from: number,
     to: number
   ): Promise<Event[]> {
-    filter.fromBlock = from;
-    filter.toBlock = to;
+    let logs: ethers.providers.Log[] = [];
 
-    const logs = await this.provider.getLogs(filter);
-    return logs.map(log => this.parseEvent(log));
+    if (!this.network?.ethers?.blocktick) {
+      const span = this.network.ethers?.blocktick as number;
+      if (isNaN(span) || span <= 0) throw "Invalid blocktick value";
+
+      const blocktick = nextBlocktick(from, to, span);
+
+      let current = blocktick.next();
+      while (!current.done) {
+        const [$from, $to] = current.value;
+
+        filter.fromBlock = $from;
+        filter.toBlock = $to;
+
+        logs.push(...await this.provider.getLogs(filter));
+
+        current = blocktick.next();
+      }
+    } else {
+      // Full fetch
+      filter.fromBlock = from;
+      filter.toBlock = to;
+
+      logs = await this.provider.getLogs(filter);
+    }
+
+    return logs.map((log) => this.parseEvent(log));
   }
 
   watchEvents(filter: any, onEvent: EventCallback): CleanupFunc {
@@ -76,7 +108,7 @@ export class EthersProvider implements Buidl3Provider {
     return () => this.provider.off(filter, onEvent);
   }
 
-  private parseBlock(block: ethers.providers.Block): Block {
+  public parseBlock(block: ethers.providers.Block): Block {
     return {
       hash: block.hash,
       parent: block.parentHash,
@@ -95,8 +127,24 @@ export class EthersProvider implements Buidl3Provider {
       data: event.data,
       chain: this.provider.network.chainId,
 
-      raw: event
+      raw: event,
     };
+  }
+}
+
+function* nextBlocktick(
+  fromBlock: number,
+  toBlock: number,
+  span: number = 10000
+) {
+  const splits = Math.ceil((toBlock - fromBlock) / span);
+  for (let i = 1; i < splits; ++i) {
+    let from = fromBlock + (i - 1) * span;
+    const to = Math.min(toBlock, from + span);
+
+    if (i > 1) from = from + 1;
+
+    yield [from, to];
   }
 }
 
@@ -114,6 +162,6 @@ export async function create(networkId: string): Promise<EthersProvider> {
 
   return new EthersProvider(
     ethers?.ws as string,
-    network.chainIdBN().toNumber()
+    network
   );
 }
