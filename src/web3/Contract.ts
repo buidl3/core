@@ -3,11 +3,10 @@ import type { IContract } from "./Concepts";
 export function rehydrate(data) {
   const contract = this as IContract;
 
-  const { ct_tx_top, ct_ev_top, ct_synced } = data;
+  const { ct_tx_top, ct_ev_top } = data;
 
   contract.txTop = ct_tx_top;
   contract.evTop = ct_ev_top;
-  contract.synced = ct_synced;
 
   if (contract.onRehydrate) contract.onRehydrate(data);
 }
@@ -17,7 +16,6 @@ export class ContractBuilder<Contract extends IContract> {
 
   constructor(id: string) {
     this.contract.id = id;
-    this.contract.synced = false;
   }
 
   public setAddress(address: string) {
