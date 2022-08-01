@@ -75,7 +75,7 @@ export class EthersProvider implements Buidl3Provider {
   ): Promise<Event[]> {
     let logs: ethers.providers.Log[] = [];
 
-    if (!this.network?.ethers?.blocktick) {
+    if (this.network?.ethers?.blocktick) {
       const span = this.network.ethers?.blocktick as number;
       if (isNaN(span) || span <= 0) throw "Invalid blocktick value";
 
