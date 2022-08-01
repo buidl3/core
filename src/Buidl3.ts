@@ -30,8 +30,6 @@ export class Buidl3 {
         await this.db.putEvent(event, extra);
       }
     }
-
-    this.db.query(sql`UPDATE contracts SET ct_ev_top = ${top.number} WHERE ct_id = ${contract.id}`);
   }
 
   watchEvents(contract: IContract, onEvent: EventCallback, upsert: boolean = false): CleanupFunc {
@@ -40,15 +38,13 @@ export class Buidl3 {
     const listeners: Array<CleanupFunc> = [];
 
     for (const filter of contract.filters) {
-      const unsubscribe = this.provider.watchEvents(filter, async event => {
-        if (upsert) {
-          const extra = filter.transform ? filter.transform(event) : undefined;
-          await this.db.putEvent(event, extra);
-
-          event.extra = extra;
-        }
+      const unsubscribe = this.provider.watchEvents(filter, event => {
+        const extra = filter.transform ? filter.transform(event) : undefined;
+        event.extra = extra;
 
         onEvent(event);
+
+        if (upsert) this.db.putEvent(event, extra);
       });
 
       listeners.push(unsubscribe);
