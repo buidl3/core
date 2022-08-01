@@ -15,6 +15,7 @@ export class Buidl3 {
 
   async restoreEvents(contract: IContract) {
     if (!contract.filters) return;
+    if (!contract.evTop || contract.evTop < 1) throw "Event top is invalid!";
 
     const top = await this.provider.getLatestBlock();
 
